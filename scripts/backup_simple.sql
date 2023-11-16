@@ -10,9 +10,9 @@ go
 
 insert into dbo.BackupSettings (name, value)
 values 
-('Log Dirrecroty', 'F:\backup\sql\log'),
-('Diff Dirrecroty', 'F:\backup\sql\diff'),
-('Full Dirrecroty', 'F:\backup\sql\full')
+('Log Dirrecroty', 'E:\backup\sql\log'),
+('Diff Dirrecroty', 'E:\backup\sql\diff'),
+('Full Dirrecroty', 'E:\backup\sql\full')
 go
 
 insert into dbo.BackupSettings (name, value)
@@ -24,6 +24,18 @@ insert into dbo.BackupSettings (name, value)
 values 
 ('Last Full Backup', '1900-01-01')
 go
+
+
+create proc dbo.CreateDir 
+	@dir varchar(255)
+as
+begin 
+	set nocount on;
+	declare @cmd varchar(2000) = 'mkdir ' + @dir;
+	exec xp_cmdshell @cmd, no_output;
+end
+go
+
 
 create proc dbo.CreateBackup
   @debug bit = 0
@@ -72,6 +84,8 @@ begin
     set @mode = 2;
   end;
    
+	exec dbo.CreateDir @dir;
+
   declare cur cursor for 
     select name
       from sys.databases d
@@ -85,8 +99,8 @@ begin
   begin
     begin try
       set @sql = formatmessage(@tmp, @db, @dir, @db, @day, @db, @day);
-      if @debug = 1 print @sql;
-      exec sp_executesql @sql;
+      if @debug = 1 exec sp_print @sql;
+      if @debug = 0 exec sp_executesql @sql;
     end try
     begin catch
       set @error += ERROR_MESSAGE() + '
@@ -128,7 +142,9 @@ begin
     where name = 'Log Dirrecroty';
 
   set @tmp = 'BACKUP LOG [%s] TO DISK=N''%s\%s-%s.trn'' WITH FORMAT, COMPRESSION';   
-   
+  
+	exec dbo.CreateDir @dir;
+
   declare cur cursor for 
     select name
       from sys.databases d
@@ -143,8 +159,8 @@ begin
   begin
     begin try
       set @sql = formatmessage(@tmp, @db, @dir, @db, @date);
-      if @debug = 1 print @sql;
-      exec sp_executesql @sql;
+      if @debug = 1 exec sp_print @sql;
+      if @debug = 0 exec sp_executesql @sql;
     end try
     begin catch
       set @error += ERROR_MESSAGE() + '
@@ -161,6 +177,10 @@ begin
     throw 60001, @error, 1;
 end
 go
+
+
+-- exec dbo.CreateBackup 1;
+-- exec dbo.CreateBackupLog 1;
 
 -- jobs
 
@@ -293,7 +313,7 @@ EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Clear',
 		@retry_attempts=0, 
 		@retry_interval=0, 
 		@os_run_priority=0, @subsystem=N'PowerShell', 
-		@command=N'Get-ChildItem F:\backup\sql\log | where LastWriteTime -lt (Get-Date).AddDays(-8) | Remove-Item', 
+		@command=N'Get-ChildItem E:\backup\sql\log | where LastWriteTime -lt (Get-Date).AddDays(-8) | Remove-Item', 
 		@database_name=N'master', 
 		@flags=0
 IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback

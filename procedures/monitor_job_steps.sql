@@ -29,6 +29,8 @@ begin
                   where sub_jh.step_id =sjstp.step_id
                     and sub_jh.job_id = sjstp.job_id
                     and sub_jh.run_status = 0
+                    and sub_jh.run_date >= sjstp.last_run_date 
+                    and sub_jh.run_time >= sjstp.last_run_time
                   order by cast(sub_jh.run_date as varchar(10)) + cast(sub_jh.run_time as varchar(50)) desc),'') as error,
       sjstp.last_run_outcome
     from msdb.dbo.sysjobsteps as sjstp with(nolock)
